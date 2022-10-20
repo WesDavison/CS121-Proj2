@@ -16,6 +16,16 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
+    if resp.status == 200:
+        print(url)
+        sp = BeautifulSoup(resp.raw_response.content, "lxml")
+        urls = sp.find_all('a')
+        links = []
+        for u in urls:
+            if u.has_attr("href"):
+                links.append(u["href"])
+        print("RETRIEVED URLS:", links)
+    print("Finished")
     return list()
 
 def is_valid(url):
