@@ -77,6 +77,13 @@ def is_valid(url):
             return False
 
         # add check to determine if url is a potential trap
+        
+        # additional file types to ignore
+        if re.match(r".*\.(odc)", parsed.path.lower()):
+            return False
+        
+        if "?share=" in url:
+            return False
 
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
