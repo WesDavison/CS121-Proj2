@@ -43,8 +43,15 @@ def extract_next_links(url, resp, masterDict):
                     acquiredLinks.add(link)
                     visitedURLs.add(link)
 
+                    print("token checking\n")
+
+                    # get_text gets all the words of a web page, and split them by newlines to be
+                    # processed properly into tokens using code from the first part.
+                    test = sp.get_text().strip().split("\n")
+
                     # TODO: Figure out a way to scrape tokens from the page.
                     masterDict[resp.url] = 0
+
 
 
         print("RETRIEVED URLS:", acquiredLinks)
