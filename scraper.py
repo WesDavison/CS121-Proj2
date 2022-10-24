@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
+    # create file with stats (here?)
+    # remember to consider stop words
     return [link for link in links if is_valid(link)]
 
 def extract_next_links(url, resp):
@@ -16,24 +18,30 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
+    acquiredLinks = set()
+
+    # check which status' are allowed (only 200?)
     if resp.status == 200:
+        # add content checks to determine if it is worth crawling aka...
+        # - check similarity to sites already visited & content amount
+
         print(resp.url + "\n")
         sp = BeautifulSoup(resp.raw_response.content, "lxml")
         urls = sp.find_all('a')
-        links = []
         for u in urls:
+            # make sure to remove # part of the url as per instructions
             if u.has_attr("href"):
                 validUrl = (u["href"].find(".ics.uci.edu/") != -1 or u["href"].find(".cs.uci.edu/") != -1
                             or u["href"].find(".informatics.uci.edu/") != -1 or u["href"].find(".stat.uci.edu/") != -1
                             or u["href"].find("today.uci.edu/department/information_computer_sciences/") != -1)
 
                 if validUrl == True:
-                    links.append(u["href"])
+                    acquiredLinks.add(u["href"])
 
-        print("RETRIEVED URLS:", links)
+        print("RETRIEVED URLS:", acquiredLinks)
         print("\n\n")
     print("Finished")
-    return list()
+    return list(acquiredLinks)
 
 def is_valid(url):
     # Decide whether to crawl this url or not.
@@ -43,6 +51,9 @@ def is_valid(url):
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
+
+        # add check to determine if url is a trap
+        
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
