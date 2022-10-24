@@ -1,6 +1,7 @@
 import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+import json
 
 visitedURLs = set()
 
@@ -11,6 +12,24 @@ def scraper(url, resp, masterDict):
     # create file with stats (here?)
     # remember to consider stop words
     return [link for link in links if is_valid(link)]
+
+def extract_webpage_text(url, resp, masterDict):
+    try:
+        with open('page_stats.json', 'r') as json_file:
+            page_stats = json.load(json_file)
+    except json.decoder.JSONDecodeError:
+        page_stats = {
+            'URL_list': {},
+            'word_list': {},
+            'word_tracking':{
+                'most_words_URL': {},
+                '50_most_common': {}
+            }
+        }
+
+    bs = BeautifulSoup(resp.raw_response.content, "lxml")
+    text = bs.get_text.strip().split("\n")
+    
 
 def extract_next_links(url, resp, masterDict):
     # Implementation required.
