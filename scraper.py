@@ -27,16 +27,17 @@ def extract_next_links(url, resp):
 
         print(resp.url + "\n")
         sp = BeautifulSoup(resp.raw_response.content, "lxml")
-        urls = sp.find_all('a')
-        for u in urls:
-            # make sure to remove # part of the url as per instructions
-            if u.has_attr("href"):
-                validUrl = (u["href"].find(".ics.uci.edu/") != -1 or u["href"].find(".cs.uci.edu/") != -1
-                            or u["href"].find(".informatics.uci.edu/") != -1 or u["href"].find(".stat.uci.edu/") != -1
-                            or u["href"].find("today.uci.edu/department/information_computer_sciences/") != -1)
-
-                if validUrl == True:
-                    acquiredLinks.add(u["href"])
+        for aTag in sp.find_all('a'):
+            if aTag.has_attr("href"):
+                link = aTag["href"]
+                # remove # segment of the url
+                link = link if '#' not in link else link[:link.index('#')]
+                
+                # checks if formerly visited and if it is valid
+                # added valid check (keep?)
+                if is_valid(link) and (link not in visitedURLs):
+                    acquiredLinks.add(link)
+                    visitedURLs.add(link)
 
         print("RETRIEVED URLS:", acquiredLinks)
         print("\n\n")
@@ -51,8 +52,15 @@ def is_valid(url):
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
-
-        # add check to determine if url is a trap
+  
+        # checks if valid URL (detailed in instructions)
+        validURL = (url.find(".ics.uci.edu/") != -1 or url.find(".cs.uci.edu/") != -1
+                    or url.find(".informatics.uci.edu/") != -1 or url.find(".stat.uci.edu/") != -1
+                    or url.find("today.uci.edu/department/information_computer_sciences/") != -1)
+        if not validURL:
+            return False
+        
+        # add check to determine if url is a potential trap
         
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
@@ -67,3 +75,6 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
         raise
+
+
+visitedURLs = set()
