@@ -2,6 +2,7 @@ import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 import json
+from collections import defaultdict
 
 visitedURLs = set()
 
@@ -13,22 +14,36 @@ def scraper(url, resp, masterDict):
     # remember to consider stop words
     return [link for link in links if is_valid(link)]
 
+
+
 def extract_webpage_text(url, resp, masterDict):
+    # setting up JSON file structure
     try:
-        with open('page_stats.json', 'r') as json_file:
-            page_stats = json.load(json_file)
+        with open('word_stats.json', 'r') as json_file:
+            word_stats = json.load(json_file)
     except json.decoder.JSONDecodeError:
-        page_stats = {
+        word_stats = {
             'URL_list': {},
             'word_list': {},
-            'word_tracking':{
-                'most_words_URL': {},
-                '50_most_common': {}
-            }
+            'URL_most_words': {}
         }
 
+    #parsing and reading webpage
     bs = BeautifulSoup(resp.raw_response.content, "lxml")
     text = bs.get_text.strip().split("\n")
+
+    #finding tokens and most used workds
+    tokens = []
+    for line in text:
+        tokens.extend([x.lower() for x in re.findall('[a-zA-Z0-9]+', line)])
+    page_word_length = len(tokens)  #number of words in the page
+    tokens_nostop = [token for token in tokens if token not in stop_words]
+    word_freqs = defaultdict(int) 
+    for token in tokens_nostop:
+        word_freqs[token] += 1
+    
+    
+
     
 
 def extract_next_links(url, resp, masterDict):
@@ -123,3 +138,14 @@ def hasher(string):
     hash = hashlib.new('md5')
     hash.update(s)
     return hash.hexdigest()
+
+
+def reset_jsons():
+    word_stats = {
+        'URL_list': {},
+        'word_list': {},
+        'URL_most_words': {}
+    }
+
+    with open('word_stats.json', 'w') as json_file:
+        json.dump(word_stats, json_file)
