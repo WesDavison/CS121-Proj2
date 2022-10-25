@@ -75,7 +75,7 @@ def extract_next_links(url, resp, masterDict):
 
         print("RETRIEVED URLS:", acquiredLinks)
         print("\n\n")
-        print(masterDict)
+        #print(masterDict)
     print("Finished")
     return list(acquiredLinks)
 
@@ -98,10 +98,10 @@ def is_valid(url):
         # add check to determine if url is a potential trap
         
         # additional file types to ignore
-        if re.match(r".*\.(odc)", parsed.path.lower()):
+        if re.match(r".*\.(odc|html)", parsed.path.lower()):
             return False
         
-        if "?share=" in url:
+        if "?share=" in url or "/pdf/" in url:
             return False
 
         return not re.match(
