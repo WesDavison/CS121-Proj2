@@ -117,3 +117,9 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
         raise
+
+def hasher(string):
+    s = string.encode('utf-8')
+    hash = hashlib.new('md5')
+    hash.update(s)
+    return hash.hexdigest()
