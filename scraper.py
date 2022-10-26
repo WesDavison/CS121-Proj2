@@ -5,6 +5,7 @@ import json
 from collections import defaultdict
 
 visitedURLs = set()
+noFragmentURLs = set()
 
 stop_words = ["a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"]
 
@@ -53,6 +54,12 @@ def isSimilarPageContent(url, resp, tokens):
             return True
     return False
 
+
+def notEnoughInfo(tokens):
+    if len(tokens) < 100:
+        return True
+    return False
+
     
 
 def extract_next_links(url, resp, masterDict):
@@ -76,15 +83,17 @@ def extract_next_links(url, resp, masterDict):
         sp = BeautifulSoup(resp.raw_response.content, "lxml")
         for aTag in sp.find_all('a'):
             if aTag.has_attr("href"):
-                link = aTag["href"]
+                url = aTag["href"]
+                link = url
                 # remove # segment of the url
                 link = link if '#' not in link else link[:link.index('#')]
 
                 # checks if formerly visited and if it is valid
                 # added valid check (keep?)
-                if is_valid(link) and (link not in visitedURLs):
-                    acquiredLinks.add(link)
-                    visitedURLs.add(link)
+                if is_valid(url) and (url not in visitedURLs):
+                    acquiredLinks.add(url)
+                    visitedURLs.add(url)
+                    noFragmentURLs.add(link)
 
                     print("token checking\n")
 
@@ -144,7 +153,7 @@ def is_valid(url):
 
 
 def isBlacklisted(url):
-    unsafeURLs = ["/photo", "/events", "/?share=", "/pdf", "/calendar", "sli.ics.uci.edu", "?ical", "page"]
+    unsafeURLs = ["/photo", "/events", "/?share=", "/pdf", "/calendar", "sli.ics.uci.edu", "?ical"]
     for component in  unsafeURLs:
         if component in url:
             return True
