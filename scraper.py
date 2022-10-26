@@ -30,7 +30,8 @@ def extract_webpage_text(url, resp, masterDict):
 
     #parsing and reading webpage
     bs = BeautifulSoup(resp.raw_response.content, "lxml")
-    text = bs.get_text.strip().split("\n")
+    text.encode("utf-8", errors="ignore")
+    text = text.strip().split("\n")
 
     #finding tokens and most used workds
     tokens = []
@@ -43,6 +44,14 @@ def extract_webpage_text(url, resp, masterDict):
         word_freqs[token] += 1
     
     
+def isSimilarPageContent(url, resp, tokens):
+    tokensDict = {}
+    for prevURL, prevTokens in tokensDict:
+        # gets length of intersection
+        numIntersections = len(set(tokens).intersection(set(prevTokens)))
+        if numIntersections / len(tokens) >= 0.70:
+            return True
+    return False
 
     
 
@@ -113,10 +122,10 @@ def is_valid(url):
         # add check to determine if url is a potential trap
         
         # additional file types to ignore
-        if re.match(r".*\.(odc|html)", parsed.path.lower()):
+        if re.match(r".*\.(odc|html|ppsx)", parsed.path.lower()):
             return False
-        
-        if "?share=" in url or "/pdf/" in url:
+
+        if isBlacklisted(url):
             return False
 
         return not re.match(
@@ -132,6 +141,15 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
         raise
+
+
+def isBlacklisted(url):
+    unsafeURLs = ["/photo", "/events", "/?share=", "/pdf", "/calendar", "sli.ics.uci.edu", "?ical", "page"]
+    for component in  unsafeURLs:
+        if component in url:
+            return True
+    return False
+
 
 def hasher(string):
     s = string.encode('utf-8')
