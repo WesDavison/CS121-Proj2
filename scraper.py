@@ -1,13 +1,31 @@
 import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-import json
 from collections import defaultdict
+from simhash import Simhash
+
 
 visitedURLs = set()
 noFragmentURLs = set()
+simHashes = set()
+simObjects = list()
+
+#report info
+longestPageWordCount = 0
+longestPageURL = ''
+totalWordsSeen = dict()
+subdomainsSeen = dict()
 
 stop_words = ["a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"]
+
+
+#https://github.com/1e0ng/simhash
+def get_features(s):
+    width = 3
+    s = s.lower()
+    s = re.sub(r'[^\w]+', '', s)
+    return [s[i:i + width] for i in range(max(len(s) - width + 1, 1))]
+
 
 def scraper(url, resp, masterDict):
     links = extract_next_links(url, resp, masterDict)
@@ -18,17 +36,6 @@ def scraper(url, resp, masterDict):
 
 
 def extract_webpage_text(url, resp, masterDict):
-    # setting up JSON file structure
-    try:
-        with open('word_stats.json', 'r') as json_file:
-            word_stats = json.load(json_file)
-    except json.decoder.JSONDecodeError:
-        word_stats = {
-            'URL_list': {},
-            'word_list': {},
-            'URL_most_words': {}
-        }
-
     #parsing and reading webpage
     bs = BeautifulSoup(resp.raw_response.content, "lxml")
     text.encode("utf-8", errors="ignore")
@@ -45,15 +52,23 @@ def extract_webpage_text(url, resp, masterDict):
         word_freqs[token] += 1
     
     
-def isSimilarPageContent(url, resp, tokens):
-    tokensDict = {}
-    for prevURL, prevTokens in tokensDict:
-        # gets length of intersection
-        numIntersections = len(set(tokens).intersection(set(prevTokens)))
-        if numIntersections / len(tokens) >= 0.70:
+# def isSimilarPageContent(url, resp, tokens):
+#     tokensDict = {}
+#     for prevURL, prevTokens in tokensDict:
+#         # gets length of intersection
+#         numIntersections = len(set(tokens).intersection(set(prevTokens)))
+#         if numIntersections / len(tokens) >= 0.70:
+#             return True
+#     return False
+
+def isSimilarPage(simhashObj):
+    for obj in simObjects:
+        if obj.distance(simhashObj) < 5:
             return True
     return False
 
+def isDuplicatePage(simhashObj):
+    return simhashObj.value in simHashes
 
 def notEnoughInfo(tokens):
     if len(tokens) < 100:
@@ -75,12 +90,29 @@ def extract_next_links(url, resp, masterDict):
     acquiredLinks = set()
 
     # check which status' are allowed (only 200?)
-    if resp.status == 200:
+    if resp.status == 200 and resp.raw_response != None:
         # add content checks to determine if it is worth crawling aka...
         # - check similarity to sites already visited & content amount
 
-        print(resp.url + "\n")
+        if url in visitedURLs:
+            #already visited
+            return list()
+
+        #print(resp.url + "\n")
         sp = BeautifulSoup(resp.raw_response.content, "lxml")
+
+        simhashObj = Simhash(value = get_features(sp.get_text()), f = 128)
+
+        if isDuplicatePage(simhashObj) or isSimilarPage(simhashObj):
+            print('found similar or duplicate page')
+            visitedURLs.add(url)
+            return list()
+        
+        #add hash value to set
+        simHashes.add(simhashObj.value)
+        #add object to set
+        simObjects.append(simhashObj)
+
         for aTag in sp.find_all('a'):
             if aTag.has_attr("href"):
                 url = aTag["href"]
@@ -90,12 +122,12 @@ def extract_next_links(url, resp, masterDict):
 
                 # checks if formerly visited and if it is valid
                 # added valid check (keep?)
-                if is_valid(url) and (url not in visitedURLs):
+                if is_valid(url):
                     acquiredLinks.add(url)
                     visitedURLs.add(url)
                     noFragmentURLs.add(link)
 
-                    print("token checking\n")
+                    #print("token checking\n")
 
                     # get_text gets all the words of a web page, and split them by newlines to be
                     # processed properly into tokens using code from the first part.
@@ -106,10 +138,14 @@ def extract_next_links(url, resp, masterDict):
 
 
 
-        print("RETRIEVED URLS:", acquiredLinks)
-        print("\n\n")
+       # print("RETRIEVED URLS:", acquiredLinks)
+        #print("\n\n")
         #print(masterDict)
-    print("Finished")
+    else:
+        #bad link
+        visitedURLs.add(url)
+        return list()
+    #("Finished")
     return list(acquiredLinks)
 
 def is_valid(url):
@@ -160,19 +196,8 @@ def isBlacklisted(url):
     return False
 
 
-def hasher(string):
-    s = string.encode('utf-8')
-    hash = hashlib.new('md5')
-    hash.update(s)
-    return hash.hexdigest()
-
-
-def reset_jsons():
-    word_stats = {
-        'URL_list': {},
-        'word_list': {},
-        'URL_most_words': {}
-    }
-
-    with open('word_stats.json', 'w') as json_file:
-        json.dump(word_stats, json_file)
+# def hasher(string):
+#     s = string.encode('utf-8')
+#     hash = hashlib.new('md5')
+#     hash.update(s)
+#     return hash.hexdigest()
