@@ -27,15 +27,14 @@ def get_features(s):
     return [s[i:i + width] for i in range(max(len(s) - width + 1, 1))]
 
 
-def scraper(url, resp, masterDict):
-    links = extract_next_links(url, resp, masterDict)
+def scraper(url, resp):
+    links = extract_next_links(url, resp)
     # create file with stats (here?)
-    # remember to consider stop words
     return [link for link in links if is_valid(link)]
 
 
 
-def extract_webpage_text(url, resp, masterDict):
+def extract_webpage_text(url, resp):
     #parsing and reading webpage
     bs = BeautifulSoup(resp.raw_response.content, "lxml")
     text.encode("utf-8", errors="ignore")
@@ -50,16 +49,44 @@ def extract_webpage_text(url, resp, masterDict):
     word_freqs = defaultdict(int) 
     for token in tokens_nostop:
         word_freqs[token] += 1
+
+
+
+def reportGeneration(url, resp):
+    bs = BeautifulSoup(resp.raw_response.content, "lxml")
+    text = bs.get_text()
+    text.encode("utf-8", errors="ignore")
+    text = text.strip().split("\n")
+
+    #finding tokens and most used workds
+    tokens = []
+    for line in text:
+        tokens.extend([x.lower() for x in re.findall('[a-zA-Z0-9]+', line)])
+
+    # update longest page found count/url
+    global longestPageWordCount
+    global longestPageURL
+    page_word_length = len(tokens)  # number of words in the page
+    if page_word_length > longestPageWordCount:
+        longestPageWordCount = page_word_length
+        longestPageURL = url
     
+    # update master token list
+    for token in tokens:
+        if token not in stop_words:
+            if token in totalWordsSeen:
+                totalWordsSeen[token] += 1
+            else:
+                totalWordsSeen[token] = 1
+
+    if 100 < len(token) < 70000:
+        return True
+    return False
     
-# def isSimilarPageContent(url, resp, tokens):
-#     tokensDict = {}
-#     for prevURL, prevTokens in tokensDict:
-#         # gets length of intersection
-#         numIntersections = len(set(tokens).intersection(set(prevTokens)))
-#         if numIntersections / len(tokens) >= 0.70:
-#             return True
-#     return False
+
+
+    
+
 
 def isSimilarPage(simhashObj):
     for obj in simObjects:
@@ -75,9 +102,17 @@ def notEnoughInfo(tokens):
         return True
     return False
 
-    
+def checkIfSubDomain(url):
+    subDomain = urlparse(url).hostname
+    #print("CURRENT SUBDOMAIN: ", subDomain)
+    if "ics.uci.edu" in subDomain:
+        if subDomain in subdomainsSeen and url not in visitedURLs:
+            subdomainsSeen[subDomain] += 1
+        elif subDomain not in subdomainsSeen:
+             subdomainsSeen[subDomain] = 1
 
-def extract_next_links(url, resp, masterDict):
+
+def extract_next_links(url, resp):
     # Implementation required.
     # url: the URL that was used to get the page
     # resp.url: the actual url of the page
@@ -89,12 +124,17 @@ def extract_next_links(url, resp, masterDict):
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
     acquiredLinks = set()
 
-    # check which status' are allowed (only 200?)
+    #
+    #
+    # print("SUBDOMAINS SEEN: ", subdomainsSeen)
+    # print(f"LONGEST PAGE: {longestPageURL} \n COUNT: {longestPageWordCount}")
+    # check which status' are allowed
     if resp.status == 200 and resp.raw_response != None:
         # add content checks to determine if it is worth crawling aka...
         # - check similarity to sites already visited & content amount
+        goodWordCountRange = reportGeneration(resp.url, resp)
 
-        if url in visitedURLs:
+        if resp.url in visitedURLs:
             #already visited
             return list()
 
@@ -103,9 +143,9 @@ def extract_next_links(url, resp, masterDict):
 
         simhashObj = Simhash(value = get_features(sp.get_text()), f = 128)
 
-        if isDuplicatePage(simhashObj) or isSimilarPage(simhashObj):
+        if isDuplicatePage(simhashObj) or isSimilarPage(simhashObj) or goodWordCountRange:
             print('found similar or duplicate page')
-            visitedURLs.add(url)
+            visitedURLs.add(resp.url)
             return list()
         
         #add hash value to set
@@ -115,32 +155,34 @@ def extract_next_links(url, resp, masterDict):
 
         for aTag in sp.find_all('a'):
             if aTag.has_attr("href"):
-                url = aTag["href"]
-                link = url
+                A_tag_url = aTag["href"]
+                link = A_tag_url
                 # remove # segment of the url
                 link = link if '#' not in link else link[:link.index('#')]
 
                 # checks if formerly visited and if it is valid
                 # added valid check (keep?)
-                if is_valid(url):
-                    acquiredLinks.add(url)
-                    visitedURLs.add(url)
+                if is_valid(A_tag_url):
+                    #print("A TAG URL: ", A_tag_url)
+                    checkIfSubDomain(A_tag_url)
+                    #getPageTokens(A_tag_url, resp)
+
+                    acquiredLinks.add(A_tag_url)
+                    visitedURLs.add(A_tag_url)
                     noFragmentURLs.add(link)
+
+
 
                     #print("token checking\n")
 
                     # get_text gets all the words of a web page, and split them by newlines to be
                     # processed properly into tokens using code from the first part.
-                    test = sp.get_text().strip().split("\n")
-
-                    # TODO: Figure out a way to scrape tokens from the page.
-                    masterDict[resp.url] = 0
+                    # test = sp.get_text().strip().split("\n")
 
 
 
        # print("RETRIEVED URLS:", acquiredLinks)
         #print("\n\n")
-        #print(masterDict)
     else:
         #bad link
         visitedURLs.add(url)
@@ -163,13 +205,12 @@ def is_valid(url):
                     or url.find("today.uci.edu/department/information_computer_sciences/") != -1)
         if not validURL:
             return False
-
-        # add check to determine if url is a potential trap
         
         # additional file types to ignore
         if re.match(r".*\.(odc|html|ppsx)", parsed.path.lower()):
             return False
 
+        # add check to determine if url is a potential trap
         if isBlacklisted(url):
             return False
 

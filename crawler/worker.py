@@ -17,8 +17,6 @@ class Worker(Thread):
         super().__init__(daemon=True)
 
     def run(self):
-        # Dictionary with URLs as keys and a list of most frequent tokens as values.
-        masterDict = dict()
 
         while True:
             tbd_url = self.frontier.get_tbd_url()
@@ -29,7 +27,7 @@ class Worker(Thread):
             self.logger.info(
                 f"Downloaded {tbd_url}, status <{resp.status}>, "
                 f"using cache {self.config.cache_server}.")
-            scraped_urls = scraper.scraper(tbd_url, resp, masterDict)
+            scraped_urls = scraper.scraper(tbd_url, resp)
             for scraped_url in scraped_urls:
                 self.frontier.add_url(scraped_url)
             self.frontier.mark_url_complete(tbd_url)
