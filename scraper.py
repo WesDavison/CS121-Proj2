@@ -13,7 +13,7 @@ simObjects = list()
 #report info
 longestPageWordCount = 0
 longestPageURL = ''
-totalWordsSeen = dict()
+totalWordsSeen = defaultdict(int)
 subdomainsSeen = dict()
 
 stop_words = ["a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"]
@@ -34,21 +34,21 @@ def scraper(url, resp):
 
 
 
-def extract_webpage_text(url, resp):
-    #parsing and reading webpage
-    bs = BeautifulSoup(resp.raw_response.content, "lxml")
-    text.encode("utf-8", errors="ignore")
-    text = text.strip().split("\n")
+# def extract_webpage_text(url, resp):
+#     #parsing and reading webpage
+#     bs = BeautifulSoup(resp.raw_response.content, "lxml")
+#     text.encode("utf-8", errors="ignore")
+#     text = text.strip().split("\n")
 
-    #finding tokens and most used workds
-    tokens = []
-    for line in text:
-        tokens.extend([x.lower() for x in re.findall('[a-zA-Z0-9]+', line)])
-    page_word_length = len(tokens)  #number of words in the page
-    tokens_nostop = [token for token in tokens if token not in stop_words]
-    word_freqs = defaultdict(int) 
-    for token in tokens_nostop:
-        word_freqs[token] += 1
+#     #finding tokens and most used workds
+#     tokens = []
+#     for line in text:
+#         tokens.extend([x.lower() for x in re.findall('[a-zA-Z0-9]+', line)])
+#     page_word_length = len(tokens)  #number of words in the page
+#     tokens_nostop = [token for token in tokens if token not in stop_words]
+#     word_freqs = defaultdict(int) 
+#     for token in tokens_nostop:
+#         word_freqs[token] += 1
 
 
 
@@ -76,9 +76,6 @@ def reportGeneration(url, resp):
         if token not in stop_words:
             if token in totalWordsSeen:
                 totalWordsSeen[token] += 1
-            else:
-                totalWordsSeen[token] = 1
-
     if 100 < len(token) < 70000:
         return True
     return False
