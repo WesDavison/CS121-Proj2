@@ -159,16 +159,18 @@ def extract_next_links(url, resp):
                 link = A_tag_url
                 # remove # segment of the url
                 link = link if '#' not in link else link[:link.index('#')]
-                A_parsed = urlparse(A_tag_url)
 
 
                 # formats relative paths (no hostname)
-                if len(A_tag_url) != 0 and A_parsed.hostname == None and A_tag_url[0] != "#":
-                    authority = url
-                    urljoin(authority, A_tag_url)
-                    # removes # due to infinite fragment variations (trap).
-                    A_tag_url = authority if '#' not in authority else authority[:authority.index('#')]
+                if len(A_tag_url) != 0 and urlparse(A_tag_url).hostname == None and A_tag_url[0] != "#":
+                    authority = resp.url
+                    if A_tag_url[0] != "/":
+                        A_tag_url = "/" + A_tag_url
+                    #print("PREV url: ", A_tag_url)
+                    A_tag_url = urljoin(authority, A_tag_url)
+                    A_tag_url = A_tag_url if '#' not in A_tag_url else A_tag_url[:A_tag_url.index('#')]
                     #print("Joined url: ",A_tag_url)
+                    
 
 
                 if is_valid(A_tag_url):
@@ -216,7 +218,7 @@ def is_valid(url):
             return False
         
         # additional file types to ignore
-        if re.match(r".*\.(odc|html|ppsx)", parsed.path.lower()):
+        if re.match(r".*\.(odc|ppsx)", parsed.path.lower()):
             return False
 
         # add check to determine if url is a potential trap
