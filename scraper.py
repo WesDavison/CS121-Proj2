@@ -76,13 +76,9 @@ def reportGeneration(url, resp):
         if token not in stop_words:
             if token in totalWordsSeen:
                 totalWordsSeen[token] += 1
-    if 100 < len(token) < 70000:
+    if 100 < page_word_length < 70000:
         return True
     return False
-    
-
-
-    
 
 
 def isSimilarPage(simhashObj):
@@ -129,18 +125,25 @@ def extract_next_links(url, resp):
     if resp.status == 200 and resp.raw_response != None:
         # add content checks to determine if it is worth crawling aka...
         # - check similarity to sites already visited & content amount
-        goodWordCountRange = reportGeneration(resp.url, resp)
 
         if resp.url in visitedURLs:
             #already visited
             return list()
+
+        
+        goodWordCountRange = reportGeneration(resp.url, resp)
 
         #print(resp.url + "\n")
         sp = BeautifulSoup(resp.raw_response.content, "lxml")
 
         simhashObj = Simhash(value = get_features(sp.get_text()), f = 128)
 
-        if isDuplicatePage(simhashObj) or isSimilarPage(simhashObj) or goodWordCountRange:
+        if not goodWordCountRange:
+            print('word count out of range')
+            visitedURLs.add(resp.url)
+            return list()
+        
+        if isDuplicatePage(simhashObj) or isSimilarPage(simhashObj):
             print('found similar or duplicate page')
             visitedURLs.add(resp.url)
             return list()
@@ -157,8 +160,15 @@ def extract_next_links(url, resp):
                 # remove # segment of the url
                 link = link if '#' not in link else link[:link.index('#')]
 
-                # checks if formerly visited and if it is valid
-                # added valid check (keep?)
+                A_parsed = urlparse(A_tag_url)
+
+                # #print(A_parsed.hostname, "PARSED ", "PATH ", A_parsed.path)
+                # #print("BEFORE",A_tag_url)
+                # if len(A_tag_url) != 0 and A_parsed.hostname == None and A_tag_url[0] == "/":
+                #     A_tag_url = url + A_tag_url
+                #     #print("AFTER",A_tag_url)
+
+
                 if is_valid(A_tag_url):
                     #print("A TAG URL: ", A_tag_url)
                     checkIfSubDomain(A_tag_url)
@@ -227,7 +237,7 @@ def is_valid(url):
 
 
 def isBlacklisted(url):
-    unsafeURLs = ["/photo", "/events", "/?share=", "/pdf", "/calendar", "sli.ics.uci.edu", "?ical"]
+    unsafeURLs = ["/photo", "/events", "/?share=", "/pdf", "/calendar", "sli.ics.uci.edu", "?ical", "mailto"]
     for component in  unsafeURLs:
         if component in url:
             return True
