@@ -1,5 +1,5 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from simhash import Simhash
@@ -159,14 +159,16 @@ def extract_next_links(url, resp):
                 link = A_tag_url
                 # remove # segment of the url
                 link = link if '#' not in link else link[:link.index('#')]
-
                 A_parsed = urlparse(A_tag_url)
 
-                # #print(A_parsed.hostname, "PARSED ", "PATH ", A_parsed.path)
-                # #print("BEFORE",A_tag_url)
-                # if len(A_tag_url) != 0 and A_parsed.hostname == None and A_tag_url[0] == "/":
-                #     A_tag_url = url + A_tag_url
-                #     #print("AFTER",A_tag_url)
+
+                # formats relative paths (no hostname)
+                if len(A_tag_url) != 0 and A_parsed.hostname == None and A_tag_url[0] != "#":
+                    authority = url
+                    urljoin(authority, A_tag_url)
+                    # removes # due to infinite fragment variations (trap).
+                    A_tag_url = authority if '#' not in authority else authority[:authority.index('#')]
+                    #print("Joined url: ",A_tag_url)
 
 
                 if is_valid(A_tag_url):
