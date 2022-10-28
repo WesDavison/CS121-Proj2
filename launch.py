@@ -39,10 +39,11 @@ if __name__ == "__main__":
             if count >= 50:
                 break
             report_file.write(f'{token} --> {occurance}\n')
+            count += 1
         report_file.write('\n')
 
         #writing most seen subdomains
         report_file.write(f'Total list of seen subdomains\n')
         report_file.write(f'Number of subdomains: {len(scraper.subdomainsSeen)}\n')
-        for subdomain, occurance in sorted(scraper.subdomains.items(), key = lambda item: item[0]):
+        for subdomain, occurance in sorted(scraper.subdomainsSeen.items(), key = lambda item: item[0]):
             report_file.write(f'{subdomain}, {occurance}\n')
