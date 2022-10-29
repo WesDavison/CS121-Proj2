@@ -241,7 +241,7 @@ def is_valid(url):
 
 
 def isBlacklisted(url):
-    unsafeURLs = ["/photo", "/events", "/?share=", "/pdf", "/calendar", "sli.ics.uci.edu", "?ical", "mailto"]
+    unsafeURLs = ["/photo", "/events", "/?share=", "/pdf", "/calendar", "sli.ics.uci.edu", "?ical", "mailto", "levorato"]
     for component in  unsafeURLs:
         if component in url:
             return True
