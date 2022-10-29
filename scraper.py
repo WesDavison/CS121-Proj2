@@ -74,8 +74,7 @@ def reportGeneration(url, resp):
     # update master token list
     for token in tokens:
         if token not in stop_words:
-            if token in totalWordsSeen:
-                totalWordsSeen[token] += 1
+            totalWordsSeen[token] += 1
     if 100 < page_word_length < 70000:
         return True
     return False
