@@ -107,16 +107,13 @@ def extract_next_links(url, resp):
             #already visited
             return list()
         
-        web_type = resp.raw_response.headers['Content-Type']
-        if re.match(
-            r".*\.(css|js|bmp|gif|jpe?g|ico"
-            + r"|png|tiff?|mid|mp2|mp3|mp4"
-            + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
-            + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
-            + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
-            + r"|epub|dll|cnf|tgz|sha1"
-            + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz|apk)$", web_type.path.lower()) != None:
+        try:
+            web_type = resp.raw_response.headers['Content-Type']
+            if "text" not in web_type:
+                print('\nfound bad link!!\n')
+                badURLs.add(urlNoFrag)
+                return list()
+        except KeyError:
             badURLs.add(urlNoFrag)
             return list()
         
