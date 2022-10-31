@@ -106,6 +106,11 @@ def extract_next_links(url, resp):
         if urlNoFrag in crawledURLs:
             #already visited
             return list()
+
+        urlPathList = urlparse(resp.url).path.split("/")
+        if len(urlPathList) != len(set(urlPathList)):
+            # repeating paths
+            return list()
         
         try:
             web_type = resp.raw_response.headers['Content-Type']
