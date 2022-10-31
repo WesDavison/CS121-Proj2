@@ -107,7 +107,7 @@ def extract_next_links(url, resp):
             #already visited
             return list()
         
-        web_type = resp.headers['Content-Type']
+        web_type = resp.raw_response.headers['Content-Type']
         if re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
