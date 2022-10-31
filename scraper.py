@@ -3,7 +3,6 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from simhash import Simhash
-import requests
 
 
 visitedURLs = set()
@@ -206,8 +205,7 @@ def is_valid(url):
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
     try:
-        redir = requests.get(url)
-        parsed = urlparse(redir)
+        parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
 
