@@ -26,7 +26,7 @@ if __name__ == "__main__":
     #output reporting information to file
     with open('report_file.txt', 'w') as report_file:
         #writing unique pages found
-        report_file.write(f'Unique pages found: {len(scraper.noFragmentURLs)}\n\n')
+        report_file.write(f'Unique pages found: {len(scraper.crawledURLs)}\n\n')
 
         #writing longest page and longest url
         report_file.write(f'Longest page length: {scraper.longestPageWordCount}\n')

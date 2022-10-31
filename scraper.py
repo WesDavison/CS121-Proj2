@@ -1,12 +1,12 @@
 import re
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from simhash import Simhash
 
 
-visitedURLs = set()
-noFragmentURLs = set()
+crawledURLs = set()
+badURLs = set()
 simHashes = set()
 simObjects = list()
 
@@ -33,25 +33,6 @@ def scraper(url, resp):
     return [link for link in links if is_valid(link)]
 
 
-
-# def extract_webpage_text(url, resp):
-#     #parsing and reading webpage
-#     bs = BeautifulSoup(resp.raw_response.content, "lxml")
-#     text.encode("utf-8", errors="ignore")
-#     text = text.strip().split("\n")
-
-#     #finding tokens and most used workds
-#     tokens = []
-#     for line in text:
-#         tokens.extend([x.lower() for x in re.findall('[a-zA-Z0-9]+', line)])
-#     page_word_length = len(tokens)  #number of words in the page
-#     tokens_nostop = [token for token in tokens if token not in stop_words]
-#     word_freqs = defaultdict(int) 
-#     for token in tokens_nostop:
-#         word_freqs[token] += 1
-
-
-
 def reportGeneration(url, resp):
     bs = BeautifulSoup(resp.raw_response.content, "lxml")
     text = bs.get_text()
@@ -69,15 +50,19 @@ def reportGeneration(url, resp):
     page_word_length = len(tokens)  # number of words in the page
     if page_word_length > longestPageWordCount:
         longestPageWordCount = page_word_length
-        longestPageURL = url
+        longestPageURL = urldefrag(url)[0]
+
+    if page_word_length <= 100 or page_word_length >= 70000:
+        return False
     
+    global totalWordsSeen
     # update master token list
     for token in tokens:
         if token not in stop_words:
             totalWordsSeen[token] += 1
-    if 100 < page_word_length < 70000:
-        return True
-    return False
+
+    return True
+    
 
 
 def isSimilarPage(simhashObj):
@@ -86,19 +71,15 @@ def isSimilarPage(simhashObj):
             return True
     return False
 
+
 def isDuplicatePage(simhashObj):
     return simhashObj.value in simHashes
 
-def notEnoughInfo(tokens):
-    if len(tokens) < 100:
-        return True
-    return False
 
 def checkIfSubDomain(url):
     subDomain = urlparse(url).hostname
-    #print("CURRENT SUBDOMAIN: ", subDomain)
     if "ics.uci.edu" in subDomain:
-        if subDomain in subdomainsSeen and url not in visitedURLs:
+        if subDomain in subdomainsSeen and url not in crawledURLs:
             subdomainsSeen[subDomain] += 1
         elif subDomain not in subdomainsSeen:
              subdomainsSeen[subDomain] = 1
@@ -116,35 +97,31 @@ def extract_next_links(url, resp):
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
     acquiredLinks = set()
 
-    #
-    #
-    # print("SUBDOMAINS SEEN: ", subdomainsSeen)
-    # print(f"LONGEST PAGE: {longestPageURL} \n COUNT: {longestPageWordCount}")
+    urlNoFrag = urldefrag(resp.url)[0]
     # check which status' are allowed
     if resp.status == 200 and resp.raw_response != None:
         # add content checks to determine if it is worth crawling aka...
         # - check similarity to sites already visited & content amount
 
-        if resp.url in visitedURLs:
+        if urlNoFrag in crawledURLs:
             #already visited
             return list()
 
         
         goodWordCountRange = reportGeneration(resp.url, resp)
 
-        #print(resp.url + "\n")
         sp = BeautifulSoup(resp.raw_response.content, "lxml")
 
         simhashObj = Simhash(value = get_features(sp.get_text()), f = 128)
 
         if not goodWordCountRange:
             print('word count out of range')
-            visitedURLs.add(resp.url)
+            crawledURLs.add(urlNoFrag)
             return list()
         
         if isDuplicatePage(simhashObj) or isSimilarPage(simhashObj):
             print('found similar or duplicate page')
-            visitedURLs.add(resp.url)
+            crawledURLs.add(urlNoFrag)
             return list()
         
         #add hash value to set
@@ -152,52 +129,30 @@ def extract_next_links(url, resp):
         #add object to set
         simObjects.append(simhashObj)
 
+        crawledURLs.add(urlNoFrag)
+
         for aTag in sp.find_all('a'):
             if aTag.has_attr("href"):
                 A_tag_url = aTag["href"]
-                link = A_tag_url
-                # remove # segment of the url
-                link = link if '#' not in link else link[:link.index('#')]
-
 
                 # formats relative paths (no hostname)
                 if len(A_tag_url) != 0 and urlparse(A_tag_url).hostname == None and A_tag_url[0] != "#":
                     authority = resp.url
                     if A_tag_url[0] != "/":
                         A_tag_url = "/" + A_tag_url
-                    #print("PREV url: ", A_tag_url)
                     A_tag_url = urljoin(authority, A_tag_url)
-                    A_tag_url = A_tag_url if '#' not in A_tag_url else A_tag_url[:A_tag_url.index('#')]
-                    #print("Joined url: ",A_tag_url)
+                    A_tag_url = urldefrag(A_tag_url)[0]
                     
 
 
-                if is_valid(A_tag_url):
+                if is_valid(A_tag_url) and urldefrag(A_tag_url)[0] not in crawledURLs and urldefrag(A_tag_url)[0] not in badURLs:
                     #print("A TAG URL: ", A_tag_url)
-                    checkIfSubDomain(A_tag_url)
+                    checkIfSubDomain(urldefrag(A_tag_url)[0])
                     #getPageTokens(A_tag_url, resp)
-
-                    acquiredLinks.add(A_tag_url)
-                    visitedURLs.add(A_tag_url)
-                    noFragmentURLs.add(link)
-
-
-
-                    #print("token checking\n")
-
-                    # get_text gets all the words of a web page, and split them by newlines to be
-                    # processed properly into tokens using code from the first part.
-                    # test = sp.get_text().strip().split("\n")
-
-
-
-       # print("RETRIEVED URLS:", acquiredLinks)
-        #print("\n\n")
+                    acquiredLinks.add(urldefrag(A_tag_url)[0])
     else:
-        #bad link
-        visitedURLs.add(url)
+        badURLs.add(urlNoFrag)
         return list()
-    #("Finished")
     return list(acquiredLinks)
 
 def is_valid(url):
@@ -232,7 +187,7 @@ def is_valid(url):
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz|apk)$", parsed.path.lower())
 
     except TypeError:
         print ("TypeError for ", parsed)
@@ -245,10 +200,3 @@ def isBlacklisted(url):
         if component in url:
             return True
     return False
-
-
-# def hasher(string):
-#     s = string.encode('utf-8')
-#     hash = hashlib.new('md5')
-#     hash.update(s)
-#     return hash.hexdigest()
