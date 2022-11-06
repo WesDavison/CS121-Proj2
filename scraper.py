@@ -4,13 +4,29 @@ from bs4 import BeautifulSoup
 from collections import defaultdict
 from simhash import Simhash
 
+####
+#
+# Project 2 - CS 121
+# Web Crawler
+# Last Modified: 11/5/2022
+#
+# Written by: (Name, Student ID)
+# Bryan Quach, 85133727
+# Francisco Santana, 11775996 
+# Wesley Davison, 39698152
+# Wesley Luong, 64161478
+#
+# Base code provided by Professor Lopes at UCI
+#
+#####
 
+# storing seen pages and page hash objects
 crawledURLs = set()
 badURLs = set()
 simHashes = set()
 simObjects = list()
 
-#report info    
+# report info    
 longestPageWordCount = 0
 longestPageURL = ''
 totalWordsSeen = defaultdict(int)
@@ -19,7 +35,7 @@ subdomainsSeen = dict()
 stop_words = ["s", "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"]
 
 
-#https://github.com/1e0ng/simhash
+# https://github.com/1e0ng/simhash
 def get_features(s):
     width = 3
     s = s.lower()
@@ -32,15 +48,15 @@ def scraper(url, resp):
     # create file with stats (here?)
     return [link for link in links if is_valid(link)]
 
-#handles scraping file
-#stores values pulled into global dicts to be used for txt generation
+# handles scraping file
+# stores values pulled into global dicts to be used for txt generation
 def reportGeneration(url, resp):
     bs = BeautifulSoup(resp.raw_response.content, "lxml")
     text = bs.get_text()
     text.encode("utf-8", errors="ignore")
     text = text.strip().split("\n")
 
-    #finding tokens and most used workds
+    # finding tokens and most used workds
     tokens = []
     for line in text:
         tokens.extend([x.lower() for x in re.findall('[a-zA-Z0-9]+', line)])
@@ -65,9 +81,9 @@ def reportGeneration(url, resp):
     return True
     
 
-#detects whether a page is similar or not using our simhash array
+# detects whether a page is similar or not using our simhash array
 #
-#takes in a simhash object and compares to all other seen simhashed from skipped pages
+# takes in a simhash object and compares to all other seen simhashed from skipped pages
 def isSimilarPage(simhashObj):
     for obj in simObjects:
         if obj.distance(simhashObj) < 5:
@@ -89,32 +105,30 @@ def checkIfSubDomain(url):
 
 
 def extract_next_links(url, resp):
-    # Implementation required.
-    # url: the URL that was used to get the page
-    # resp.url: the actual url of the page
-    # resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
-    # resp.error: when status is not 200, you can check the error here, if needed.
-    # resp.raw_response: this is where the page actually is. More specifically, the raw_response has two parts:
-    #         resp.raw_response.url: the url, again
-    #         resp.raw_response.content: the content of the page!
-    # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
+
+    # Links to be returned by the function for scraping
     acquiredLinks = set()
 
+    # Defragmenting the url to be crawled
     urlNoFrag = urldefrag(resp.url)[0]
+
     # check which status' are allowed
     if resp.status == 200 and resp.raw_response != None:
         # add content checks to determine if it is worth crawling aka...
         # - check similarity to sites already visited & content amount
 
+        # check if already crawled
         if urlNoFrag in crawledURLs:
             #already visited
             return list()
 
+        # check for repeating paths
         urlPathList = urlparse(resp.url).path.split("/")
         if len(urlPathList) != len(set(urlPathList)):
             # repeating paths
             return list()
         
+        # check if valid content type to be parsed
         try:
             web_type = resp.raw_response.headers['Content-Type']
             if "text" not in web_type:
@@ -125,29 +139,36 @@ def extract_next_links(url, resp):
             badURLs.add(urlNoFrag)
             return list()
         
+        # crawl text and check if page is valid size
         goodWordCountRange = reportGeneration(resp.url, resp)
 
+        # create beautiful soup object for html parsing
         sp = BeautifulSoup(resp.raw_response.content, "lxml")
 
+        # create simhash object for duplication testing
         simhashObj = Simhash(value = get_features(sp.get_text()), f = 128)
 
+        # if page was out of range then add to crawled urls and return
         if not goodWordCountRange:
             print('word count out of range')
             crawledURLs.add(urlNoFrag)
             return list()
         
+        # if page is a duplicate or too similar then return
         if isDuplicatePage(simhashObj) or isSimilarPage(simhashObj):
             print('found similar or duplicate page')
             crawledURLs.add(urlNoFrag)
             return list()
         
-        #add hash value to set
+        # add hash value to set
         simHashes.add(simhashObj.value)
-        #add object to set
+        # add object to set
         simObjects.append(simhashObj)
 
+        # add url to valid crawled urls
         crawledURLs.add(urlNoFrag)
 
+        # find links in html
         for aTag in sp.find_all('a'):
             if aTag.has_attr("href"):
                 A_tag_url = aTag["href"]
@@ -159,15 +180,13 @@ def extract_next_links(url, resp):
                         A_tag_url = "/" + A_tag_url
                     A_tag_url = urljoin(authority, A_tag_url)
                     A_tag_url = urldefrag(A_tag_url)[0]
-                    
 
-
+                # if url is valid then add to subdomains and aquire link for returning
                 if is_valid(A_tag_url) and urldefrag(A_tag_url)[0] not in crawledURLs and urldefrag(A_tag_url)[0] not in badURLs:
-                    #print("A TAG URL: ", A_tag_url)
                     checkIfSubDomain(urldefrag(A_tag_url)[0])
-                    #getPageTokens(A_tag_url, resp)
                     acquiredLinks.add(urldefrag(A_tag_url)[0])
     else:
+        # no content or error, bad url and return
         badURLs.add(urlNoFrag)
         return list()
     return list(acquiredLinks)
