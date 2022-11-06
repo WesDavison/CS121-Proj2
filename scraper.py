@@ -32,7 +32,8 @@ def scraper(url, resp):
     # create file with stats (here?)
     return [link for link in links if is_valid(link)]
 
-
+#handles scraping file
+#stores values pulled into global dicts to be used for txt generation
 def reportGeneration(url, resp):
     bs = BeautifulSoup(resp.raw_response.content, "lxml")
     text = bs.get_text()
@@ -64,7 +65,9 @@ def reportGeneration(url, resp):
     return True
     
 
-
+#detects whether a page is similar or not using our simhash array
+#
+#takes in a simhash object and compares to all other seen simhashed from skipped pages
 def isSimilarPage(simhashObj):
     for obj in simObjects:
         if obj.distance(simhashObj) < 5:
